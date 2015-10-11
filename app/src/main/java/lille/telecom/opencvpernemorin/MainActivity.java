@@ -1,8 +1,8 @@
 package lille.telecom.opencvpernemorin;
 
 import android.app.Activity;
-import android.app.Fragment;
 import android.app.FragmentManager;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -13,11 +13,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
-
-import org.opencv.android.OpenCVLoader;
-import org.opencv.android.Utils;
-import org.opencv.core.Mat;
-import org.opencv.highgui.Highgui;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -89,7 +84,7 @@ public class MainActivity extends Activity implements View.OnClickListener{
         if(requestCode == IMAGE_CAPTURE && resultCode == RESULT_OK){
             Bundle extra = data.getExtras();
             this.imageBitmap = (Bitmap)extra.get("data");
-//            this.imageFound = this.imageBitmap;
+//            this.uriFound = getImageUri(getApplicationContext(), this.imageBitmap); // Marche pas car la photo n'est pas enregistrée, faut envoyer le descriptor opencv
             imageActivityMain.setImageBitmap(this.imageBitmap);
         }
         else if(requestCode == IMAGE_PHOTOLIBRARY && resultCode == RESULT_OK){
@@ -98,10 +93,6 @@ public class MainActivity extends Activity implements View.OnClickListener{
             try {
                 this.imageBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), photoUri);
                 imageActivityMain.setImageBitmap(this.imageBitmap);
-                Toast toast = Toast.makeText(this, photoUri.getPath(), Toast.LENGTH_LONG);
-                toast.show();
-                OpenCVLoader.initDebug();
-                Mat m = Highgui.imread("drawable://" + R.drawable.frame_18);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -118,7 +109,6 @@ public class MainActivity extends Activity implements View.OnClickListener{
 
     @Override
     public void onClick(View view) {
-        //view.setBackgroundColor(#F28C0D)
         if(view == captureBtn){
             startCaptureActivity();
         }else if(view == libraryBtn){
@@ -126,15 +116,6 @@ public class MainActivity extends Activity implements View.OnClickListener{
         }else if(view == photoMatchBtn){
             startPhotoMatchActivity();
         }
-    }
-
-    private void startPhotoMatchActivity() {
-        Intent photoMatchIntent = new Intent(this, PhotoMatchActivity.class);
-//        ByteArrayOutputStream bs = new ByteArrayOutputStream();
-//        this.imageFound.compress(Bitmap.CompressFormat.JPEG, 100, bs); // todo : test photo non vide
-//        photoMatchIntent.putExtra("byteArray", bs.toByteArray());
-        photoMatchIntent.putExtra(this.uriFound.getPath(), "uriFound"); // todo : inverser les parametre (key, value), les key sont des nomdepackege.constante
-        startActivity(photoMatchIntent);
     }
 
     protected void startCaptureActivity() {
@@ -146,10 +127,22 @@ public class MainActivity extends Activity implements View.OnClickListener{
         Intent libraryIntent = new Intent();
         libraryIntent.setType("image/*");
         libraryIntent.setAction(Intent.ACTION_GET_CONTENT);
-        startActivityForResult(Intent.createChooser(libraryIntent, "select location picture"),IMAGE_PHOTOLIBRARY);
+        startActivityForResult(Intent.createChooser(libraryIntent, "select location picture"), IMAGE_PHOTOLIBRARY);
         // todo : si image grande, impossible upload voir photo.compress
     }
 
+    private void startPhotoMatchActivity() {
+        Intent photoMatchIntent = new Intent(this, PhotoMatchActivity.class);
+        photoMatchIntent.putExtra("uriFound", this.uriFound);
+        startActivity(photoMatchIntent);
+    }
+
+    public Uri getImageUri(Context inContext, Bitmap inImage) {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        inImage.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
+        String path = MediaStore.Images.Media.insertImage(inContext.getContentResolver(), inImage, "Title", null);
+        return Uri.parse(path);
+    }
 
     // todo : changer la couleur du bouton quand on clic dessus (pour IHM) : https://openclassrooms.com/courses/creez-des-applications-pour-android/creation-de-vues-personnalisees
 }
