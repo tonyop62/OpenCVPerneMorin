@@ -1,14 +1,10 @@
 package lille.telecom.opencvpernemorin;
 
 import android.app.Activity;
-import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.provider.MediaStore;
-import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -17,31 +13,17 @@ import android.widget.Toast;
 
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
-import org.opencv.core.Core;
-import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDMatch;
 import org.opencv.core.MatOfKeyPoint;
+import org.opencv.features2d.DMatch;
 import org.opencv.features2d.DescriptorExtractor;
 import org.opencv.features2d.DescriptorMatcher;
 import org.opencv.features2d.FeatureDetector;
 import org.opencv.highgui.Highgui;
-import org.opencv.imgproc.Imgproc;
-import org.opencv.features2d.DMatch;
 
-import android.widget.Toast;
-
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -68,94 +50,94 @@ public class PhotoMatchActivity extends Activity {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-//            this.photoRecup = BitmapFactory.decodeFile(photoUri.getPath());
             this.imageView = (ImageView)findViewById(R.id.photoRecup);
             this.imageView.setImageBitmap(this.photoRecup);
 
-            Log.d("path", photoUri.getPath());
+            /******* récupération de tous les drawables ******/
+            // On récupère l'ensemble des "champs" de la classe R.drawable
+            Field[] fields = R.drawable.class.getFields();
 
-            OpenCVLoader.initDebug();
-//            Mat matRecup = Highgui.imread(photoUri.getPath(), Highgui.IMREAD_GRAYSCALE);
+            for (Field field : fields) {
+                try {
 
-            Mat matRecup = new Mat();
-            Utils.bitmapToMat(photoRecup, matRecup);
+                    // pour ne prendre que les photos a comparer
+                    if(!field.getName().startsWith("abc", 0)) {
 
-            // test passage en gris
-//                Bitmap bmp = null;
-//                Utils.matToBitmap(matRecup, bmp);
-//                this.imageView.setImageBitmap(bmp);
+                        // Pour chaque champ, on récupère sa valeur (c'est à dire l'identifiant de la ressource)
+                        int currentResId = field.getInt(R.drawable.class);
 
-            // récup Mat depuis drawable
-            Mat m = new Mat();
-            try {
-                m = Utils.loadResource(this, R.drawable.frame_18, Highgui.CV_LOAD_IMAGE_GRAYSCALE);
-                Log.d("drawable", m.dump());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+                        Log.d("nomdraw", field.getName());
 
-            FeatureDetector detector = FeatureDetector.create(FeatureDetector.ORB);
-            DescriptorExtractor descriptor = DescriptorExtractor.create(DescriptorExtractor.ORB);
-            DescriptorMatcher matcher = DescriptorMatcher.create(DescriptorMatcher.BRUTEFORCE_HAMMING);
 
-            Mat descriptors1 = new Mat();
-            MatOfKeyPoint keypoints1 = new MatOfKeyPoint();
+                        // traitement opencv
 
-            detector.detect(matRecup, keypoints1);
-            descriptor.compute(matRecup, keypoints1, descriptors1);
+                        OpenCVLoader.initDebug();
 
-            Mat descriptors2 = new Mat();
-            MatOfKeyPoint keypoints2 = new MatOfKeyPoint();
+                        Mat matRecup = new Mat();
+                        Utils.bitmapToMat(photoRecup, matRecup);
 
-            detector.detect(m, keypoints2);
-            descriptor.compute(m, keypoints2, descriptors2);
+                        // test passage en gris
+                        Mat matGray = Highgui.imread(photoUri.getPath(), Highgui.IMREAD_GRAYSCALE);
 
-            MatOfDMatch matches = new MatOfDMatch();
-            matcher.match(descriptors1, descriptors2, matches);
+                        // récup Mat depuis drawable
+                        Mat m = new Mat();
+                        try {
 
-            Log.d("matches", matches.dump());
+                            m = Utils.loadResource(this, currentResId, Highgui.CV_LOAD_IMAGE_GRAYSCALE);
+                            Log.d("drawable", m.dump());
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
 
-            List<DMatch> matchesList = matches.toList();
-            List<DMatch> matchesListFinal = new ArrayList<DMatch>();
 
-            for(int i=0 ; i < matchesList.size() ; i++){
-                Log.d("matchesstring" ,matchesList.get(i).toString()); // donne DMatch [queryIdx=54, trainIdx=139, imgIdx=0, distance=54.0]
-                // queryIdx représente keypoints1
-                // trainIdx représente keypoints2
-                // distance à laquelle se trouve les deux points
+                    FeatureDetector detector = FeatureDetector.create(FeatureDetector.ORB);
+                    DescriptorExtractor descriptor = DescriptorExtractor.create(DescriptorExtractor.ORB);
+                    DescriptorMatcher matcher = DescriptorMatcher.create(DescriptorMatcher.BRUTEFORCE_HAMMING);
 
-                if(matchesList.get(i).distance <= this.DISTANCE_MAX){
-                    matchesListFinal.add(matchesList.get(i));
+                    // 1er descripteur
+                    Mat descriptors1 = new Mat();
+                    MatOfKeyPoint keypoints1 = new MatOfKeyPoint();
+
+                    detector.detect(matRecup, keypoints1);
+                    descriptor.compute(matRecup, keypoints1, descriptors1);
+
+                    // 2e descripteur
+                    Mat descriptors2 = new Mat();
+                    MatOfKeyPoint keypoints2 = new MatOfKeyPoint();
+
+                    detector.detect(m, keypoints2);
+                    descriptor.compute(m, keypoints2, descriptors2);
+
+                    // points "matchés"
+                    MatOfDMatch matches = new MatOfDMatch();
+                    matcher.match(descriptors1, descriptors2, matches);
+
+                    Log.d("matches", matches.dump());
+
+                    List<DMatch> matchesList = matches.toList();
+                    List<DMatch> matchesListFinal = new ArrayList<DMatch>();
+
+                    for(int i=0 ; i < matchesList.size() ; i++){
+                        Log.d("matchesstring" ,matchesList.get(i).toString()); // donne DMatch [queryIdx=54, trainIdx=139, imgIdx=0, distance=54.0]
+                        // queryIdx représente keypoints1
+                        // trainIdx représente keypoints2
+                        // distance à laquelle se trouve les deux points
+
+                        if(matchesList.get(i).distance <= this.DISTANCE_MAX){
+                            matchesListFinal.add(matchesList.get(i));
+                        }
+
+                    }
+
+                    Toast.makeText(this.getApplicationContext(), String.valueOf(matchesListFinal.size()), Toast.LENGTH_LONG).show();
+                    }
+
+                } catch (IllegalArgumentException e) {
+                    e.printStackTrace();
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();;
                 }
-
             }
-
-            Toast.makeText(this.getApplicationContext(), String.valueOf(matchesListFinal.size()), Toast.LENGTH_LONG).show();
-
-            File sdCard = Environment.getExternalStorageDirectory();
-            Toast.makeText(this.getApplicationContext(),
-                    sdCard.getAbsolutePath(),
-                    Toast.LENGTH_LONG).show(); // return false
-
-            File dir = new File (sdCard.getAbsolutePath() + "/opencv_perne_morin");
-            dir.mkdirs();
-            File file = new File(dir, "mat_store.json");
-
-            FileOutputStream f = null;
-            try {
-                f = new FileOutputStream(file);
-                f.write(matToJson(descriptors1).getBytes());
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            /***************** Serialisation marche pas ***********/
-//                ObjectOutputStream os = new ObjectOutputStream(f);
-//                os.writeObject(matRecup);
-//                os.close();
-//                f.close();
 
 
 
@@ -163,75 +145,6 @@ public class PhotoMatchActivity extends Activity {
 
         }
         // todo : ajouter photo dans un coin pour rappeler la photo qu'on vient de capturer qu'on veut faire analyser
-    }
-
-    public static String matToJson(Mat mat){
-        JsonObject obj = new JsonObject();
-
-        if(mat.isContinuous()){
-            int cols = mat.cols();
-            int rows = mat.rows();
-            int elemSize = (int) mat.elemSize();
-
-            byte[] data = new byte[cols * rows * elemSize];
-
-            mat.get(0, 0, data);
-
-            obj.addProperty("rows", mat.rows());
-            obj.addProperty("cols", mat.cols());
-            obj.addProperty("type", mat.type());
-
-            // We cannot set binary data to a json object, so:
-            // Encoding data byte array to Base64.
-            String dataString = new String(Base64.encode(data, Base64.DEFAULT));
-
-            obj.addProperty("data", dataString);
-
-            Gson gson = new Gson();
-            String json = gson.toJson(obj);
-
-            return json;
-        } else {
-            Log.e(TAG, "Mat not continuous.");
-        }
-        return "{}";
-    }
-
-    public static Mat matFromJson(String json){
-        JsonParser parser = new JsonParser();
-        JsonObject JsonObject = parser.parse(json).getAsJsonObject();
-
-        int rows = JsonObject.get("rows").getAsInt();
-        int cols = JsonObject.get("cols").getAsInt();
-        int type = JsonObject.get("type").getAsInt();
-
-        String dataString = JsonObject.get("data").getAsString();
-        byte[] data = Base64.decode(dataString.getBytes(), Base64.DEFAULT);
-
-        Mat mat = new Mat(rows, cols, type);
-        mat.put(0, 0, data);
-
-        return mat;
-    }
-
-
-    /* Checks if external storage is available for read and write */
-    public boolean isExternalStorageWritable() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
-            return true;
-        }
-        return false;
-    }
-
-    /* Checks if external storage is available to at least read */
-    public boolean isExternalStorageReadable() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state) ||
-                Environment.MEDIA_MOUNTED_READ_ONLY.equals(state)) {
-            return true;
-        }
-        return false;
     }
 
     @Override
