@@ -7,24 +7,75 @@
     tools:context="lille.telecom.opencvpernemorin.PhotoMatchActivity">
 
     <ImageView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
         android:id="@+id/imageRecup"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true" />
+        android:layout_below="@+id/frameLayout"
+        android:layout_centerHorizontal="true" />
 
     <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true">
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/frameLayout">
 
-        <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:id="@+id/photoRecup"
-            android:layout_gravity="left|center_vertical" />
     </FrameLayout>
+
+    <ImageView
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:id="@+id/imageTrouve1"
+        android:layout_below="@+id/imageRecup"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="55dp" />
+
+    <ImageView
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:id="@+id/imageTrouve2"
+        android:layout_below="@+id/imageTrouve1"
+        android:layout_alignLeft="@+id/imageTrouve1"
+        android:layout_alignStart="@+id/imageTrouve1" />
+    <ImageView
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:id="@+id/imageTrouve3"
+        android:layout_below="@+id/imageTrouve2"
+        android:layout_alignLeft="@+id/imageTrouve2"
+        android:layout_alignStart="@+id/imageTrouve2" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Images trouvées"
+        android:id="@+id/textView"
+        android:layout_below="@+id/imageRecup"
+        android:layout_centerHorizontal="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="1"
+        android:id="@+id/textView2"
+        android:layout_alignTop="@+id/imageTrouve1"
+        android:layout_toLeftOf="@+id/imageTrouve1"
+        android:layout_toStartOf="@+id/imageTrouve1" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="2"
+        android:id="@+id/textView3"
+        android:layout_alignTop="@+id/imageTrouve2"
+        android:layout_toLeftOf="@+id/textView2"
+        android:layout_toStartOf="@+id/textView2" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="3"
+        android:id="@+id/textView4"
+        android:layout_below="@+id/imageTrouve2"
+        android:layout_alignRight="@+id/textView3"
+        android:layout_alignEnd="@+id/textView3" />
 
 </RelativeLayout>

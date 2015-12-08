@@ -2,26 +2,30 @@ package lille.telecom.opencvpernemorin;
 
 import android.app.Activity;
 import android.app.FragmentManager;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.Toast;
-
-import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class MainActivity extends Activity implements View.OnClickListener{
 
-    static final String tag = MainActivity.class.getName();
-    private static final int IMAGE_CAPTURE = 1;
     private static final int IMAGE_PHOTOLIBRARY = 2;
+    private static final int CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE = 100;
+    public static final int MEDIA_TYPE_IMAGE = 1;
+    public static final int MEDIA_TYPE_VIDEO = 2;
+    public static final int MAX_SIZE = 2048;
     private Button captureBtn;
     private ImageView imageActivityMain;
     private Button libraryBtn;
@@ -79,24 +83,43 @@ public class MainActivity extends Activity implements View.OnClickListener{
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-//        super.onActivityResult(requestCode, resultCode, data);
+
         this.imageBitmap = null;
-        if(requestCode == IMAGE_CAPTURE && resultCode == RESULT_OK){
-            Bundle extra = data.getExtras();
-            this.imageBitmap = (Bitmap)extra.get("data");
-//            this.uriFound = getImageUri(getApplicationContext(), this.imageBitmap); // Marche pas car la photo n'est pas enregistrée, faut envoyer le descriptor opencv
-            imageActivityMain.setImageBitmap(this.imageBitmap);
+        if(requestCode == CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE && resultCode == RESULT_OK){
+            try {
+                this.imageBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), this.uriFound);
+
+                // redimenssionne image si trop large car elle ne s'affiche pas sinon
+                if (this.imageBitmap.getHeight() > MAX_SIZE || this.imageBitmap.getWidth() > MAX_SIZE ) {
+                    this.imageBitmap = Bitmap.createScaledBitmap(this.imageBitmap, MAX_SIZE, MAX_SIZE, false);
+                    // rotation
+                    Matrix matrix = new Matrix();
+                    matrix.postRotate(90);
+                    this.imageBitmap = Bitmap.createBitmap(this.imageBitmap, 0, 0, this.imageBitmap.getWidth(), this.imageBitmap.getHeight(), matrix, true);
+                }
+
+                imageActivityMain.setImageBitmap(this.imageBitmap);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
         else if(requestCode == IMAGE_PHOTOLIBRARY && resultCode == RESULT_OK){
             Uri photoUri = data.getData();
             this.uriFound = photoUri;
             try {
                 this.imageBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), photoUri);
+
+                // redimenssionne image si trop large car elle ne s'affiche pas sinon
+                if (this.imageBitmap.getHeight() > MAX_SIZE || this.imageBitmap.getWidth() > MAX_SIZE ) {
+                    this.imageBitmap = Bitmap.createScaledBitmap(this.imageBitmap, MAX_SIZE, MAX_SIZE, false);
+                }
+
                 imageActivityMain.setImageBitmap(this.imageBitmap);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+
         FragmentManager fm = getFragmentManager();
         dataFragment = (RetainFragment) fm.findFragmentByTag("data");
 
@@ -120,7 +143,10 @@ public class MainActivity extends Activity implements View.OnClickListener{
 
     protected void startCaptureActivity() {
         Intent captureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        startActivityForResult(captureIntent, IMAGE_CAPTURE);
+        this.uriFound = getOutputMediaFileUri(MEDIA_TYPE_IMAGE); // create a file to save the image
+        Log.d("urifound", uriFound.toString());
+        captureIntent.putExtra(MediaStore.EXTRA_OUTPUT, this.uriFound);
+        startActivityForResult(captureIntent, CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE);
     }
 
     private void startPhotoLibraryActivity() {
@@ -128,7 +154,6 @@ public class MainActivity extends Activity implements View.OnClickListener{
         libraryIntent.setType("image/*");
         libraryIntent.setAction(Intent.ACTION_GET_CONTENT);
         startActivityForResult(Intent.createChooser(libraryIntent, "select location picture"), IMAGE_PHOTOLIBRARY);
-        // todo : si image grande, impossible upload voir photo.compress
     }
 
     private void startPhotoMatchActivity() {
@@ -137,11 +162,41 @@ public class MainActivity extends Activity implements View.OnClickListener{
         startActivity(photoMatchIntent);
     }
 
-    public Uri getImageUri(Context inContext, Bitmap inImage) {
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        inImage.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
-        String path = MediaStore.Images.Media.insertImage(inContext.getContentResolver(), inImage, "Title", null);
-        return Uri.parse(path);
+    private static Uri getOutputMediaFileUri(int type){
+        return Uri.fromFile(getOutputMediaFile(type));
+    }
+
+    /** Create a File for saving an image or video */
+    private static File getOutputMediaFile(int type){
+        // todo : To be safe, you should check that the SDCard is mounted using Environment.getExternalStorageState() before doing this.
+
+        File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_PICTURES), "MyCameraApp");
+        // This location works best if you want the created images to be shared
+        // between applications and persist after your app has been uninstalled.
+
+        // Create the storage directory if it does not exist
+        if (! mediaStorageDir.exists()){
+            if (! mediaStorageDir.mkdirs()){
+                Log.d("MyCameraApp", "failed to create directory");
+                return null;
+            }
+        }
+
+        // Create a media file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        File mediaFile;
+        if (type == MEDIA_TYPE_IMAGE){
+            mediaFile = new File(mediaStorageDir.getPath() + File.separator +
+                    "IMG_"+ timeStamp + ".jpg");
+        } else if(type == MEDIA_TYPE_VIDEO) {
+            mediaFile = new File(mediaStorageDir.getPath() + File.separator +
+                    "VID_"+ timeStamp + ".mp4");
+        } else {
+            return null;
+        }
+
+        return mediaFile;
     }
 
     // todo : changer la couleur du bouton quand on clic dessus (pour IHM) : https://openclassrooms.com/courses/creez-des-applications-pour-android/creation-de-vues-personnalisees
